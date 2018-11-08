@@ -79,6 +79,16 @@ int main() {
             if (!(lastticks%50)){
               //code here will run every 50 ms
               
+              //output the distance from the object to the ultrasonic sensor on tft in mm
+              if (FLAG_ECHO == 1){
+                tft_clear();
+                sonar_distance = sonar_get();
+                tft_prints(0,0,"%d",sonar_distance);
+                USARTSend(buffer);
+                FLAG_ECHO = 0;
+                tft_update();
+              }
+              
               if (robot_mode == AUTO){
                 if ((sonar_distance >= 100) && (sonar_distance <= 250)){
                   //grab
