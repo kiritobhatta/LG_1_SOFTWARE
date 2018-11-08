@@ -58,7 +58,7 @@ int main() {
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
-    uart_init(COM1,115200);
+    usart_init();
     tft_init(PIN_ON_TOP, WHITE, BLACK, RED, YELLOW);
     sonar_init();
 	
