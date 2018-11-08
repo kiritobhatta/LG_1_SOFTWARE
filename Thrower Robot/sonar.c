@@ -85,7 +85,7 @@ void sonar_init() {
 	//Trigger Pin
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 	gpio_cfg.GPIO_Mode = GPIO_Mode_Out_PP;
-	gpio_cfg.GPIO_Pin = GPIO_Pin_15;
+	gpio_cfg.GPIO_Pin = GPIO_Pin_8;
 	GPIO_Init(GPIOB, &gpio_cfg);
 
 	//EXTI
@@ -99,7 +99,7 @@ void sonar_init() {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
 	/* Set pin as input */
-	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_0;
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_7;
 	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IPU;
 	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;
 	GPIO_Init(GPIOB, &GPIO_InitStruct);
@@ -134,11 +134,11 @@ void sonar_init() {
 void EXTI0_IRQHandler(void) {
 	/* Make sure that interrupt flag is set */
 	if (EXTI_GetITStatus(EXTI_Line0) != RESET) {
-		if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_0) != 0) {
+		if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_7) != 0) {
 			// Rising
 			TIM_SetCounter(TIM3, 0);
 		}
-		if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_0) == 0) {
+		if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_7) == 0) {
 			// Falling
 			SonarValue = TIM_GetCounter(TIM3);
 		}
@@ -151,10 +151,10 @@ void EXTI0_IRQHandler(void) {
 void sonar_start() {
 	int i;
 
-	GPIO_SetBits(GPIOB, GPIO_Pin_15);
+	GPIO_SetBits(GPIOB, GPIO_Pin_8);
 	//Delay 0x72000
 	for(i=0;i<0x7200;i++);
-	GPIO_ResetBits(GPIOB, GPIO_Pin_15);
+	GPIO_ResetBits(GPIOB, GPIO_Pin_8);
 }
 
 u32 sonar_get() {
