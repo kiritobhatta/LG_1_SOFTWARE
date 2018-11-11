@@ -13,22 +13,17 @@ void SetSysClockTo72(void);
 /**
  * @brief initialize ultrasonic sensor
  */	
-void sonar_init();
+void sonar_init(void);
 
-void EXTI0_IRQHandler(void);
-
-void sonar_start();
+void sonar_start(void);
 
 /** 
  * @brief return ultrasonic sensor value
  */
-u32 sonar_get();
+u32 sonar_get(void);
 
 void usart_init(void);
 
 void USARTSend(char *pucBuffer);
-
-void TIM4_IRQHandler(void);
-
 
 #endif
