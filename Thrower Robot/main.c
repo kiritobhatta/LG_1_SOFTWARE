@@ -40,9 +40,9 @@ int main() {
     
     uart_rx_init(COM3,&UARTOnReceiveHandler);  
     uint32_t lastticks=get_ticks();
-		int sonar_distance;
-		
-		OperationMode robot_mode;
+    u32 sonar_distance;
+    
+    OperationMode robot_mode;
 		
     while(1){
         if(lastticks!=get_ticks()){
