@@ -5,9 +5,7 @@
 #include "uart.h"
 #include "lcd_main.h"
 #include "oled.h"
-#include "camera.h"
 #include "pwm.h"
-#include "adc.h"
 #include "leds.h"
 #include "buttons.h"
 #include "buzzer.h"
@@ -34,31 +32,8 @@ void UARTOnReceiveHandler(const u8 received){
 
 int main() {
     // Initialize Everything Here
-    char buffer[80] = {'\0'};
-
     SetSysClockTo72();
 
-    // TIMER4 Äâ³÷è çà ñåêóíäó âèêëèêàº sonar_start(); ³ âñòàíîâëþº FLAG_ECHO = 1;
-    TIM_TimeBaseInitTypeDef TIMER_InitStructure;
-    NVIC_InitTypeDef NVIC_InitStructure;
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-    TIM_TimeBaseStructInit(&TIMER_InitStructure);
-    TIMER_InitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-    TIMER_InitStructure.TIM_Prescaler = 7200;
-    TIMER_InitStructure.TIM_Period = 5000;
-    TIM_TimeBaseInit(TIM4, &TIMER_InitStructure);
-    TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
-    TIM_Cmd(TIM4, ENABLE);
-
-    /* NVIC Configuration */
-    /* Enable the TIM4_IRQn Interrupt */
-    NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-    NVIC_Init(&NVIC_InitStructure);
-
-    usart_init();
     tft_init(PIN_ON_TOP, WHITE, BLACK, RED, YELLOW);
     sonar_init();
 	
@@ -78,18 +53,14 @@ int main() {
             lastticks=get_ticks();
             if (!(lastticks%50)){
               //code here will run every 50 ms
-              
-              //output the distance from the object to the ultrasonic sensor on tft in mm
-              if (FLAG_ECHO == 1){
+              if (robot_mode == AUTO){
+                
+                sonar_start();
                 tft_clear();
                 sonar_distance = sonar_get();
-                tft_prints(0,0,"%d",sonar_distance);
-                USARTSend(buffer);
-                FLAG_ECHO = 0;
+                tft_prints(0, 0, "%d", sonar_distance);
                 tft_update();
-              }
-              
-              if (robot_mode == AUTO){
+                
                 if ((sonar_distance >= 100) && (sonar_distance <= 250)){
                   //grab
                 }else if (sonar_distance > 1000){
