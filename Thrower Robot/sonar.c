@@ -72,20 +72,20 @@ void sonar_init() {
 	GPIO_StructInit(&gpio_cfg);
 
 	/* Timer TIM3 enable clock */
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
 
 	/* Timer TIM3 settings */
 	TIM_TimeBaseInitTypeDef timer_base;
 	TIM_TimeBaseStructInit(&timer_base);
 	timer_base.TIM_CounterMode = TIM_CounterMode_Up;
 	timer_base.TIM_Prescaler = 72;
-	TIM_TimeBaseInit(TIM3, &timer_base);
-	TIM_Cmd(TIM3, ENABLE);
+	TIM_TimeBaseInit(TIM2, &timer_base);
+	TIM_Cmd(TIM2, ENABLE);
 
 	//Trigger Pin
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 	gpio_cfg.GPIO_Mode = GPIO_Mode_Out_PP;
-	gpio_cfg.GPIO_Pin = GPIO_Pin_8;
+	gpio_cfg.GPIO_Pin = GPIO_Pin_11;
 	GPIO_Init(GPIOB, &gpio_cfg);
 
 	//EXTI
@@ -99,14 +99,14 @@ void sonar_init() {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
 	/* Set pin as input */
-	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_7;
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_10;
 	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IPU;
 	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;
 	GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 	/* Add IRQ vector to NVIC */
-	/* PB0 is connected to EXTI_Line0, which has EXTI0_IRQn vector */
-	NVIC_InitStruct.NVIC_IRQChannel = EXTI0_IRQn;
+	/* PB0 is connected to EXTI_Line10, which has EXTI15_10_IRQn vector */
+	NVIC_InitStruct.NVIC_IRQChannel = EXTI15_10_IRQn;
 	/* Set priority */
 	NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0x00;
 	/* Set sub priority */
@@ -116,11 +116,11 @@ void sonar_init() {
 	/* Add to NVIC */
 	NVIC_Init(&NVIC_InitStruct);
 
-	/* Tell system that you will use PB0 for EXTI_Line0 */
-	GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource0);
+	/* Tell system that you will use PB10 for EXTI_Line10 */
+	GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource10);
 
-	/* PD0 is connected to EXTI_Line0 */
-	EXTI_InitStruct.EXTI_Line = EXTI_Line0;
+	/* PB10 is connected to EXTI_Line10 */
+	EXTI_InitStruct.EXTI_Line = EXTI_Line10;
 	/* Enable interrupt */
 	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
 	/* Interrupt mode */
@@ -131,30 +131,30 @@ void sonar_init() {
 	EXTI_Init(&EXTI_InitStruct);
 }
 
-void EXTI0_IRQHandler(void) {
+void EXTI15_10_IRQHandler(void) {
 	/* Make sure that interrupt flag is set */
-	if (EXTI_GetITStatus(EXTI_Line0) != RESET) {
-		if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_7) != 0) {
+	if (EXTI_GetITStatus(EXTI_Line10) != RESET) {
+		if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_10) != 0) {
 			// Rising
-			TIM_SetCounter(TIM3, 0);
+			TIM_SetCounter(TIM2, 0);
 		}
-		if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_7) == 0) {
+		if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_10) == 0) {
 			// Falling
-			SonarValue = TIM_GetCounter(TIM3);
+			SonarValue = TIM_GetCounter(TIM2);
 		}
 
 		/* Clear interrupt flag */
-		EXTI_ClearITPendingBit(EXTI_Line0);
+		EXTI_ClearITPendingBit(EXTI_Line10);
 	}
 }
 
 void sonar_start() {
 	int i;
 
-	GPIO_SetBits(GPIOB, GPIO_Pin_8);
+	GPIO_SetBits(GPIOB, GPIO_Pin_11);
 	//Delay 0x72000
 	for(i=0;i<0x7200;i++);
-	GPIO_ResetBits(GPIOB, GPIO_Pin_8);
+	GPIO_ResetBits(GPIOB, GPIO_Pin_11);
 }
 
 u32 sonar_get() {
@@ -230,7 +230,7 @@ void USARTSend(char *pucBuffer)
         }
     }
 }
-
+/*
 void TIM4_IRQHandler(void)
 {
         if (TIM_GetITStatus(TIM4, TIM_IT_Update) != RESET)
@@ -240,3 +240,4 @@ void TIM4_IRQHandler(void)
         	TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
         }
 }
+*/
