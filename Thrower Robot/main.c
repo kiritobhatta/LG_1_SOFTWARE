@@ -11,21 +11,13 @@
 #include "leds.h"
 #include "buttons.h"
 #include "buzzer.h"
+#include "MotorControl.h"
+//#include "LineSensor.h"
+#include "Sonar.h"
 
-
-#define LMotor MOTOR1
-#define RMotor MOTOR2
-
-void LForward(u16 a){motor_control(LMotor, a, 1);} // Left motor turing forward
-void RForward(u16 a){motor_control(RMotor, a, 1);} // Right motor turing forward
-void LBackward(u16 a){motor_control(LMotor, a, 0);} // Left motor turing backward
-void RBackward(u16 a){motor_control(RMotor, a, 0);} // Right motor turing backward
-
-void Forward (u16 speed){LForward(speed);RForward(speed);} //Car move forward
-void Backward (u16 speed){LBackward(speed);RBackward(speed);} //Car move backward
-void TurnLeft (u16 speed){LBackward(speed);RForward(speed);} //Car turn left
-void TurnRight (u16 speed){LForward(speed);RBackward(speed);} //Car turn right
-void Stop(){motor_control(LMotor, 0, 1);motor_control(RMotor, 0, 1);} //Stop the car
+typedef enum{AUTO, MANUAL}Operation_Mode;
+typedef enum{STRAIGHT_L,PUSH_FROM_LEFT}Left_Motor_Motion;
+typedef enum{STRAIGHT_R,PUSH_FROM_RIGHT}Right_Motor_Motion;
 
 u32 value_received; //value from Bluetooth connection
 void UARTOnReceiveHandler(const u8 received){
@@ -34,37 +26,97 @@ void UARTOnReceiveHandler(const u8 received){
 
 int main() {
     // Initialize Everything Here
+		
     rcc_init();
     ticks_init();
-    
+   
     leds_init();
-    buttons_init();	
-    uart_init(COM3,38400);
-	motor_init(MOTOR1, 11, 1200, 0, 1);
-	motor_init(MOTOR2, 11, 1200, 0, 1);
+    buttons_init();
+		tft_init(PIN_ON_LEFT, BLACK, WHITE, WHITE, WHITE);
+   // uart_init(COM3,115200);
+		motor_init(MOTOR1, 11, 1200, 0, 1);
+		motor_init(MOTOR2, 11, 1200, 0, 1);
     
-    uart_rx_init(COM3,&UARTOnReceiveHandler);  
-    uint32_t lastticks=get_ticks();
+		//Initialising the gpio pin for the line sensor
+		gpio_init(GPIO5, GPIO_Mode_IPU);//input pin5
+		gpio_init(GPIO6, GPIO_Mode_IPU);//input pin6
+		int left_line_sensor=0;
+		int right_line_sensor=0;
+		
+		const int forwardSpeed=200;
+		const int differenceSpeed=50;
+		const int turningSpeed=50;
+		
+		Operation_Mode robot_mode;
+		robot_mode=AUTO;//INITIALISE ROBOT MODE AS AUTO
+		
     while(1){
-        if(lastticks!=get_ticks()){
-            lastticks=get_ticks();
-            if (!(lastticks%50)){
-              //code here will run every 50 ms
-              
-              if (value_received == 0){
-			    Stop();
-			  }else if (value_received <= 50){
-	  			Forward(value_received * 24);
-	  		  }else if (value_received <= 100){
-				TurnLeft((value_received - 50) * 24);
-		      }else if (value_received <= 150){
-				Backward((value_received - 100) * 24);
-			  }else if (value_received <= 200){
-				TurnRight((value_received - 150) * 24);
-			  }
-              
-            }
-        }
-    }        
-}
-
+			static u32 this_ticks=0;
+      while(get_ticks()==this_ticks);
+			this_ticks=get_ticks();
+			
+			
+			left_line_sensor=gpio_read(GPIO5);
+			right_line_sensor=gpio_read(GPIO6);
+			tft_clear();
+			tft_prints(0,0,"Left Line Sensor:");
+			tft_prints(0,1,"%d",left_line_sensor);
+			tft_prints(0,2,"Right Line Sensor:");
+			tft_prints(0,3,"%d",right_line_sensor);
+			tft_prints(0,4,"Left Motor Speed:");
+			tft_prints(0,6,"Right Motor Speed:");
+			
+			
+			static u32 last_ticks=0;
+			if((this_ticks-last_ticks)>=200){//Code from here and below will only work once every 200 ms
+				
+				if(left_line_sensor==0 && right_line_sensor==0){
+					Forward(forwardSpeed);
+					
+					tft_prints(0,5,"%d",forwardSpeed);
+					tft_prints(0,7,"%d",forwardSpeed);
+					tft_update();
+				}
+				else if(left_line_sensor==1 && right_line_sensor==0){
+					LForward(forwardSpeed);//Left motor remains constant
+					RForward(forwardSpeed-differenceSpeed);//Right motor slows down
+					
+					tft_prints(0,5,"%d",forwardSpeed);
+					tft_prints(0,7,"%d",forwardSpeed-differenceSpeed);
+					tft_update();
+				}
+				else if(left_line_sensor==0 && right_line_sensor==1){
+					LForward(forwardSpeed-differenceSpeed);
+					RForward(forwardSpeed);
+					
+					tft_prints(0,5,"%d",forwardSpeed-differenceSpeed);
+					tft_prints(0,7,"%d",forwardSpeed);
+					tft_update();
+				}
+				else if(left_line_sensor==1 && right_line_sensor==1){
+					Stop();
+					
+					tft_prints(0,5,"0");
+					tft_prints(0,7,"0");
+					tft_update();
+				}
+			}
+			//UARTOnReceiveHandler();
+//----------------------------------------------------------------------------------------------------------------------						
+			/*				else if(robot_mode==MANUAL){
+								if (value_received == 0){
+									Stop();
+								}else if (value_received <= 50){
+									Forward(value_received * 24);
+								}else if (value_received <= 100){
+									TurnLeft((value_received - 50) * 24);
+								}else if (value_received <= 150){
+									Backward((value_received - 100) * 24);
+								}else if (value_received <= 200){
+									TurnRight((value_received - 150) * 24);
+								}
+							}*/
+       // }
+			
+			}
+		}
