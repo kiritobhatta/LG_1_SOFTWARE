@@ -4,7 +4,6 @@
 #include "stdio.h"
 #include "misc.h"
 
-volatile uint8_t FLAG_ECHO = 0;
 volatile uint16_t SonarValue;
 
 void SetSysClockTo72(void)
@@ -71,10 +70,10 @@ void sonar_init() {
 	GPIO_InitTypeDef gpio_cfg;
 	GPIO_StructInit(&gpio_cfg);
 
-	/* Timer TIM3 enable clock */
+	/* Timer TIM2 enable clock */
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
 
-	/* Timer TIM3 settings */
+	/* Timer TIM2 settings */
 	TIM_TimeBaseInitTypeDef timer_base;
 	TIM_TimeBaseStructInit(&timer_base);
 	timer_base.TIM_CounterMode = TIM_CounterMode_Up;
@@ -85,7 +84,7 @@ void sonar_init() {
 	//Trigger Pin
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 	gpio_cfg.GPIO_Mode = GPIO_Mode_Out_PP;
-	gpio_cfg.GPIO_Pin = GPIO_Pin_11;
+	gpio_cfg.GPIO_Pin = GPIO_Pin_11; //connect Trig pin to servo 2 output pin
 	GPIO_Init(GPIOB, &gpio_cfg);
 
 	//EXTI
@@ -99,7 +98,7 @@ void sonar_init() {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
 	/* Set pin as input */
-	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_10;
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_10; //connect Echo pin to servo 3 output pin
 	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IPU;
 	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;
 	GPIO_Init(GPIOB, &GPIO_InitStruct);
@@ -131,6 +130,7 @@ void sonar_init() {
 	EXTI_Init(&EXTI_InitStruct);
 }
 
+/* Comment the EXTI15_10_IRQHandler(void) in camera.c */
 void EXTI15_10_IRQHandler(void) {
 	/* Make sure that interrupt flag is set */
 	if (EXTI_GetITStatus(EXTI_Line10) != RESET) {
@@ -169,75 +169,3 @@ u32 sonar_get() {
 
 	return (u32)Sonar;
 }
-
-
-void usart_init(void)
-{
-	/* Enable USART1 and GPIOA clock */
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1 | RCC_APB2Periph_GPIOA, ENABLE);
-
-	/* Configure the GPIOs */
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	/* Configure USART1 Tx (PA.09) as alternate function push-pull */
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-	/* Configure USART1 Rx (PA.10) as input floating */
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-	/* Configure the USART1 */
-	USART_InitTypeDef USART_InitStructure;
-
-	/* USART1 configuration ------------------------------------------------------*/
-	/* USART1 configured as follow:
-	          - BaudRate = 115200 baud
-	          - Word Length = 8 Bits
-	          - One Stop Bit
-	          - No parity
-	          - Hardware flow control disabled (RTS and CTS signals)
-	          - Receive and transmit enabled
-	          - USART Clock disabled
-	          - USART CPOL: Clock is active low
-	          - USART CPHA: Data is captured on the middle
-	          - USART LastBit: The clock pulse of the last data bit is not output to
-	                           the SCLK pin
-	 */
-	USART_InitStructure.USART_BaudRate = 115200;
-	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-	USART_InitStructure.USART_StopBits = USART_StopBits_1;
-	USART_InitStructure.USART_Parity = USART_Parity_No;
-	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-
-	USART_Init(USART1, &USART_InitStructure);
-
-	/* Enable USART1 */
-	USART_Cmd(USART1, ENABLE);
-}
-
-void USARTSend(char *pucBuffer)
-{
-    while (*pucBuffer)
-    {
-        USART_SendData(USART1, *pucBuffer++);
-        while(USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET)
-        {
-        }
-    }
-}
-/*
-void TIM4_IRQHandler(void)
-{
-        if (TIM_GetITStatus(TIM4, TIM_IT_Update) != RESET)
-        {
-        	sonar_start();
-			FLAG_ECHO = 1;
-        	TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
-        }
-}
-*/
