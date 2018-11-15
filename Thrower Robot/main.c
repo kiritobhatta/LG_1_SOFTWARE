@@ -15,7 +15,7 @@
 
 typedef enum{AUTO, MANUAL}OperationMode;
 
-u32 value_received; //value from Bluetooth connection
+u8 value_received; //value from Bluetooth connection
 void UARTOnReceiveHandler(const u8 received){
   value_received = received;
 }
@@ -31,7 +31,7 @@ int main() {
   
   leds_init();
   buttons_init();
-  uart_init(COM3,38400);
+  uart_init(COM3,9600);
   motor_init(MOTOR1, 11, 1200, 0, 1);
   motor_init(MOTOR2, 11, 1200, 0, 1);
   
