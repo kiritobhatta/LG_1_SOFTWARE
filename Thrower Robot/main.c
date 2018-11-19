@@ -85,6 +85,10 @@ int main() {
         }else {
           Stop();
         }
+        
+        if (value_received == 255){
+          robot_mode = MANUAL;
+        }
       }
       
       
