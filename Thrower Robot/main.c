@@ -46,42 +46,58 @@ int main() {
       lastticks=get_ticks();
       if (!(lastticks%50)){
         //code here will run every 50
-        if (value_received == 0){
-          Stop();
-        }else if (value_received <= 50){
-          Forward(value_received * 24);
-        }else if (value_received <= 100){
-          TurnLeft((value_received - 50) * 24);
-        }else if (value_received <= 150){
-          Backward((value_received - 100) * 24);
-        }else if (value_received <= 200){
-          TurnRight((value_received - 150) * 24);
+        if (robot_mode == MANUAL){
+          if (value_received == 0){
+            Stop();
+          }else if (value_received <= 50){
+            Forward(value_received * 24);
+          }else if (value_received <= 100){
+            TurnLeft((value_received - 50) * 24);
+          }else if (value_received <= 150){
+            Backward((value_received - 100) * 24);
+          }else if (value_received <= 200){
+            TurnRight((value_received - 150) * 24);
+          }else if (value_received == 210){
+            //SHOOT
+          }else if (value_received == 220){
+            //GRAB
+          }else if (value_received == 220){
+            //RELEASE
+          }
         }
       }
       
+      if (robot_mode == AUTO){
+        sonar_start();
+        tft_clear();
+        sonar_distance = sonar_get();
+        tft_prints(0, 0, "%d", sonar_distance);
+        tft_update();
+                  
+        if ((sonar_distance >= 100) && (sonar_distance <= 250)){
+          //grab
+        }else if (sonar_distance > 1000){
+          //Forward(300);
+        }else if (sonar_distance > 250){
+          //Forward(300);
+        }else if (sonar_distance < 100){
+          //Backward(300);
+        }else {
+          Stop();
+        }
+      }
+      
+      
+      //print info to tft if button 1 is pressed
       if (!(lasticks%250)){
-        if (robot_mode == AUTO){
+        if (button_pressed(BUTTON1)){
           //get the distance from the object to the ultrasonic sensor in mm
           //output the distance on tft in mm
-          sonar_start();
           tft_clear();
-          sonar_distance = sonar_get();
-          tft_prints(0, 0, "%d", sonar_distance);
+          tft_prints(0, 0, "Sonar: %d", sonar_distance);
+          tft_prints(10,0, "Bluetooth: %d", value_received);
           tft_update();
-                  
-          if ((sonar_distance >= 100) && (sonar_distance <= 250)){
-            //grab
-          }else if (sonar_distance > 1000){
-            //Forward(300);
-          }else if (sonar_distance > 250){
-            //Forward(300);
-          }else if (sonar_distance < 100){
-            //Backward(300);
-          }else {
-            Stop();
-          }
         }
-        
       }
     }
   }        
