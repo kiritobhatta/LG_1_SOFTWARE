@@ -93,13 +93,13 @@ int main() {
       
       
       //print info to tft if button 1 is pressed
-      if (!(lasticks%250)){
+      if (!(lastticks%250)){
         if (button_pressed(BUTTON1)){
           //get the distance from the object to the ultrasonic sensor in mm
           //output the distance on tft in mm
           tft_clear();
           tft_prints(0, 0, "Sonar: %d", sonar_distance);
-          tft_prints(10,0, "Bluetooth: %d", value_received);
+          tft_prints(0, 3, "Bluetooth: %d", value_received);
           tft_update();
         }
       }
