@@ -25,8 +25,13 @@ int main() {
     // Initialize Everything Here
   rcc_init();
   ticks_init();
-  
-  tft_init(PIN_ON_TOP, BLACK, WHITE, RED, YELLOW);
+  leds_init();
+	led_on(LED1);
+	
+  tft_init(PIN_ON_BOTTOM, BLACK, WHITE, RED, YELLOW);
+	tft_clear();
+	//tft_prints(0,0,"Value: 0");
+	tft_update();
 	
   leds_init();
   buttons_init();
@@ -41,8 +46,8 @@ int main() {
 	int left_sensor_reading;
 	int right_sensor_reading;
 	//-------------------Initialization for Motors
-  motor_init(MOTOR1, 11, 1200, 0, 1);
-  motor_init(MOTOR2, 11, 1200, 0, 1);
+  motor_init(MOTOR1, 1, 7200, 7200, 1);
+  motor_init(MOTOR2, 1, 7200, 7200, 0);
 	
 	const int forwardSpeed=200;
 	const int turningSpeed=50;
@@ -59,7 +64,7 @@ int main() {
 	int counter=0;
 	//-----------------------Operation Mode Initialization
   OperationMode robot_mode;
-	robot_mode=MANUAL;
+	robot_mode=AUTO;
   //-----------------------Auto Mode initialization for linesensors
 	int stages=0;
 	static u32 stop_time=0;
@@ -72,19 +77,28 @@ int main() {
 					tft_clear();
           if (value_received == 0){
             Stop();
-						tft_prints(0,0,"Value_received: %d",value_received);
+						tft_prints(0,0,"Value: %d",value_received);
+						tft_prints(0,1,"Stopped");
+						tft_update();
           }else if (value_received <= 50){
-            Forward(value_received * 24);
-						tft_prints(0,0,"Value_received: %d",value_received);
+            Forward(value_received * 144);
+						tft_prints(0,0,"Value: %d",value_received);
+						tft_prints(0,1,"Moving Forward");
+						tft_update();
           }else if (value_received <= 100){
-            TurnLeft((value_received - 50) * 24);
-						tft_prints(0,0,"Value_received: %d",value_received);
+            TurnLeft((value_received - 50) * 144);
+						tft_prints(0,0,"Value: %d",value_received);
+						tft_prints(0,1,"Turning Left");
+						tft_update();
           }else if (value_received <= 150){
-            Backward((value_received - 100) * 24);
-						tft_prints(0,0,"Value_received: %d",value_received);
+            Backward((value_received - 100) * 144);
+						tft_prints(0,0,"Value: %d",value_received);
+						tft_prints(0,1,"Turning Right");
+						tft_update();
           }else if (value_received <= 200){
-            TurnRight((value_received - 150) * 24);
-						tft_prints(0,0,"Value_received: %d",value_received);
+            TurnRight((value_received - 150) * 144);
+						tft_prints(0,0,"Value: %d",value_received);
+						tft_update();
           }else if (value_received == 210){
             //SHOOT
           }else if (value_received == 220){
@@ -105,25 +119,28 @@ int main() {
 				//-------------------------------------------------------------------------------				
 				if(current_checker!=previous_checker){
 					counter++;
+					tft_clear();
+					tft_prints(0,2,"Counter: %d",counter);
 				}
 				//Everytime there is a change in the input value compared to the value in the previous tick, counter increases
 				//-------------------------------------------------------------------------------
 				if(gpio_read(GPIO7)){previous_checker=true;}
 				else{previous_checker=false;}
 				
-				if(counter==5){
-					Stop();
-				}
 				
 				switch(stages%7){
-				//------------------------------------Stage1
-					case 0:{//Moving Straight forward
-						while(counter<5){
+				//------------------------------------Stage1---Moving Straight Forward
+					case 0:{
+						tft_prints(0,3,"Stage 1");
+						
+						if(counter<5){//Moving until the first stage has been completed
 							if(left_sensor_reading==1 && right_sensor_reading==1){
 								Forward(forwardSpeed);
+								tft_prints(0,4,"Moving Forward");
 							}
 							else{
 								Stop();
+								tft_prints(0,4,"Stopped");
 							}
 						}
 						if(counter==5){
@@ -132,14 +149,17 @@ int main() {
 							counter=0;
 						}
 					}
-			//-------------------------------------Stage2
+			//-------------------------------------Stage2---Moving Backward 
 					case 1:{
-						while(counter<3){
+						tft_prints(0,3,"Stage 2");
+						if(counter<3){
 							if(left_sensor_reading==1 && right_sensor_reading==1){//while they are in parallel
 								Backward(forwardSpeed);
+								tft_prints(0,4,"Moving Backward");
 							}
 							else{
 								Stop();
+								tft_prints(0,4,"Stopped");
 							}
 						}
 						if(counter==3){
@@ -148,24 +168,34 @@ int main() {
 							counter=0;
 						}	
 					}
-			//-----------------------------------Stage3
-					case 2:{
-						while(left_sensor_reading!=1 && right_sensor_reading==1){//Until they come in parallel
-							LForward(turningSpeed);
+			//-----------------------------------Stage3---Turning Right
+					case 2:{//turning -- will loop every ms while in automode and in this
+						tft_prints(0,3,"Stage 3");
+						if(right_sensor_reading!=1){//make adjustment and move accordingly
+							Forward(turningSpeed);
+							tft_prints(0,4,"Adjusting");
 						}
+						if(left_sensor_reading!=1 && right_sensor_reading==1){//Until they come in parallel
+							LForward(turningSpeed);
+							RForward(0);
+							tft_prints(0,4,"Turning");
+						}	
 						if(left_sensor_reading==1 && right_sensor_reading==1){
 							stages++;
 							counter=0;
 						}
 					}
-		 //-------------------------------------Stage4
+		 //-------------------------------------Stage4---Move Forward
 					case 3:{
-						while(counter<5){
+						tft_prints(0,3,"Stage 4");
+						if(counter<5){
 							if(left_sensor_reading==1 && right_sensor_reading==1){
 								Forward(forwardSpeed);
+								tft_prints(0,4,"Moving forward");
 							}
 							else{
 								Stop();
+								tft_prints(0,4,"Stopped");
 							}
 						}
 						if(counter==5){
@@ -174,25 +204,30 @@ int main() {
 							counter=0;
 						}
 					}
-			  //-------------------------------------Stage5
+			  //-------------------------------------Stage5---Turning
 					case 4:{
-						while(left_sensor_reading!=1 && right_sensor_reading==1){//Until they come in parallel
+						tft_prints(0,3,"Stage 5");
+						if(left_sensor_reading!=1 && right_sensor_reading==1){//Until they come in parallel
 							LForward(turningSpeed);
+							RForward(0);
+							tft_prints(0,4,"Turning");
 						}
 						if(left_sensor_reading==1 && right_sensor_reading==1){
 							stages++;
 							counter=0;
 						}
 					}
-					
 			 //-------------------------------------Stage6
 					case 5:{
-						while(counter<2){
+						tft_prints(0,3,"Stage 6");
+						if(counter<2){
 							if(left_sensor_reading==1 && right_sensor_reading==1){
 								Forward(forwardSpeed);
+								tft_prints(0,4,"Moving forward");
 							}
 							else{
 								Stop();
+								tft_prints(0,4,"Stopped");
 							}
 						}
 						if(counter==2){
@@ -202,9 +237,11 @@ int main() {
 					}
 		  //---------------------------------------Stage7
 					case 6:{
+						tft_prints(0,3,"Stage 7");
 						stop_time++;
 						if(stop_time<=5000){//stops for 5 secs in stopping zone
 							Stop();
+							tft_prints(0,4,"Stopped");
 						}
 						else{
 							stages++;
@@ -212,11 +249,12 @@ int main() {
 						}
 					}
 				}
+				//tft_update();
 				//------------------------------------------------From here on is for the AUTO MODE - ULTRASONIC SENSOR
         sonar_start();
 				
 				
-        tft_clear();
+        //tft_clear();
         sonar_distance = sonar_get();
         tft_prints(0, 0, "%d", sonar_distance);
         tft_update();
@@ -245,7 +283,7 @@ int main() {
           //output the distance on tft in mm
           tft_clear();
           tft_prints(0, 0, "Sonar: %d", sonar_distance);
-          tft_prints(10,0, "Bluetooth: %d", value_received);
+          tft_prints(0,6, "Bluetooth: %d", value_received);
           tft_update();
         }
       }
