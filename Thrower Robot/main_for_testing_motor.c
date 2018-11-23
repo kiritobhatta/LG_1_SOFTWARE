@@ -18,10 +18,10 @@ int main() {
 	static u8 direction_one = 0;
 	static u8 direction_two = 1;
 	rcc_init();
-    ticks_init();
+  ticks_init();
 	leds_init();
-    buttons_init();
-    gpio_init(GPIO1, GPIO_Mode_Out_PP);
+  buttons_init();
+  gpio_init(GPIO1, GPIO_Mode_Out_PP);
 	gpio_init(GPIO2, GPIO_Mode_Out_PP);
 	gpio_init(GPIO3, GPIO_Mode_Out_PP);
 	motor_init(MOTOR1, 6, 1200, motor, direction_one);
@@ -49,7 +49,7 @@ int main() {
 			  button_check_1 = 1;
 			}else if (!(button_pressed(BUTTON1)) && (button_check_1 == 1)){
 				button_check_1 = 0;
-			    motor += 100;
+			  motor += 100;
 				motor_control(MOTOR1, motor, direction_one);
 				motor_control(MOTOR3, motor, direction_two);
 			}
@@ -60,7 +60,7 @@ int main() {
 			  button_check_2 = 1;
 			}else if (!(button_pressed(BUTTON2)) && (button_check_2 == 1)){
 				button_check_2 = 0;
-			    motor -= 100;
+			  motor -= 100;
 				motor_control(MOTOR1, motor, direction_one);
 				motor_control(MOTOR3, motor, direction_two);
 			}
@@ -70,23 +70,23 @@ int main() {
 			if ((button_pressed(BUTTON3))&&(button_check_3 == 0)){
 			  button_check_3 = 1;
 			}else if (!(button_pressed(BUTTON3)) && (button_check_3 == 1)){
-				    button_check_3 = 0;
+				  button_check_3 = 0;
 			    if (direction_one == 0){
 					direction_one = 1;
 					direction_two = 0;
 					motor_control(MOTOR1, motor, direction_one);
-				    motor_control(MOTOR3, motor, direction_two);
+				  motor_control(MOTOR3, motor, direction_two);
 				}else if (direction_one == 1){
 					direction_one = 0;
 					direction_two = 1;
-				    motor_control(MOTOR1, motor, direction_one);
-				    motor_control(MOTOR3, motor, direction_two);
+				  motor_control(MOTOR1, motor, direction_one);
+				  motor_control(MOTOR3, motor, direction_two);
 				}
 			}
 			
       
       //print to tft
-	  tft_clear();
+	    tft_clear();
       tft_prints(0, 0, "M 1: %d Dir: %d", motor, direction_one);
       tft_prints(0, 3, "M 3: %d Dir: %d", motor, direction_two);
       tft_update();
