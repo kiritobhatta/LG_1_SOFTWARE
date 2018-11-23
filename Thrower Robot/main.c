@@ -25,7 +25,6 @@ int main() {
   rcc_init();
   ticks_init();
   leds_init();
-	led_on(LED1);
 	
   tft_init(PIN_ON_BOTTOM, BLACK, WHITE, RED, YELLOW);
 	tft_clear();
@@ -41,10 +40,10 @@ int main() {
 	bool shoot=false;
 	
 	gpio_init(GPIO2,GPIO_Mode_Out_PP);//Grab
-
+	int grab_counter=0;
 	
 	gpio_init(GPIO3,GPIO_Mode_Out_PP);//Lift
-
+	int lift_counter=0;
 	
 	//-------------------Initialization for bluetooth module
   uart_init(COM3,9600);
@@ -56,13 +55,13 @@ int main() {
 	int left_sensor_reading;
 	int right_sensor_reading;
 	//-------------------Initialization for Motors
-  motor_init(MOTOR1, 1, 7200, 7000, 0);//Initialized to Stop ---- Wheel Rotation Direction (0-Forward, 1- Backward)
-  motor_init(MOTOR2, 1, 7200, 7000, 0);//Initialized to Stop
+  motor_init(MOTOR1, 6, 1200, 1200, 0);//Initialized to Stop ---- Wheel Rotation Direction (0-Forward, 1- Backward)
+  motor_init(MOTOR3, 6, 1200, 1200, 0);//Initialized to Stop---- Wheel Rotation Direction (0-Forward, 1-Backward)
 	
 	//Maxium Speed = 0
-	const int forwardSpeed=0;
-	const int turningSpeed=5000;
-	const int adjustingSpeed=6000;
+	const int forwardSpeed=1000;
+	const int turningSpeed=200;
+	const int adjustingSpeed=200;
 	//-----Initialization for ultrasonic Sensor
 	SetSysClockTo72();
 	sonar_init();
@@ -75,59 +74,113 @@ int main() {
 	int counter=0;
 	//-----------------------Operation Mode Initialization
   OperationMode robot_mode;
+	int mode=0;
 	robot_mode=MANUAL;
   //-----------------------Auto Mode initialization for linesensors
 	int stages=0;
 	
-	static u32 stop_time=0;
+	
+	
+	static u32 stop_time=0,last_ticks,this_ticks;
   while(1){
     if(lastticks!=get_ticks()){
       lastticks=get_ticks();
+			
+			this_ticks=get_ticks();
+			
+			//----------------------------------Button 1 can be used to interchange between Manual and Auto Mode
+			/*if (this_ticks - last_ticks >= 50) {
+				static u8 debounce;
+				if (!button_pressed(BUTTON1) && debounce) {debounce = 0;}
+			// set debounce if button is initially pressed
+				if (button_pressed(BUTTON1) && !debounce) {debounce = 1;mode++;}
+				else if (button_pressed(BUTTON1) && debounce) {}
+			}
+			if(mode%2==0){robot_mode=AUTO;}
+			else if(mode%2==1){robot_mode=MANUAL;}
+			*/
       if (!(lastticks%50)){
         //code here will run every 50
         if (robot_mode == MANUAL){
-					tft_clear();
+					//tft_clear();
           if (value_received == 0){
+						led_on(LED1);
             Stop();
+						/*
 						tft_prints(0,0,"Value: %d",value_received);
 						tft_prints(0,1,"Stopped");
-						tft_update();
+						tft_update();*/
           }else if (value_received <= 50){
-            Forward(7000-(value_received*140));
+            Forward(value_received*24);
+						led_on(LED1);
+						/*
 						tft_prints(0,0,"Value: %d",value_received);
 						tft_prints(0,1,"Moving Forward");
-						tft_update();
+						tft_update();*/
           }else if (value_received <= 100){
-            TurnLeft(7000-((value_received - 50)*140));
+            TurnLeft((value_received - 50)*24);
+						led_on(LED1);
+						/*
 						tft_prints(0,0,"Value: %d",value_received);
 						tft_prints(0,1,"Turning Left");
-						tft_update();
+						tft_update();*/
           }else if (value_received <= 150){
-            Backward(7000-((value_received - 100)*140));
+            Backward((value_received - 100)*24);
+						led_on(LED1);
+						/*
 						tft_prints(0,0,"Value: %d",value_received);
 						tft_prints(0,1,"Turning Right");
-						tft_update();
+						tft_update();*/
           }else if (value_received <= 200){
-            TurnRight(7000-((value_received - 150)*140));
+						led_on(LED1);
+            TurnRight((value_received - 150)*24);
+						/*
 						tft_prints(0,0,"Value: %d",value_received);
-						tft_update();
+						tft_update();*/
           }else if (value_received == 210){//Shoot
+						/*
 						tft_prints(0,0,"Value: %d",value_received);
-						tft_update();
+						tft_update();*/
             gpio_set(GPIO1);//Set gpio as high
+						led_on(LED1);
           }else if (value_received == 220){//To Grab
+						/*
 						tft_prints(0,0,"Value: %d",value_received);
-						tft_update();
-            gpio_set(GPIO2);
-						tft_prints(0,1,"Shooting has started");
-          }else if (value_received == 230){//To Lift
-						tft_prints(0,0,"Value: %d",value_received);
-						tft_update();
-            gpio_set(GPIO3);
-          }
+						tft_update();*/
+            //gpio_set(GPIO2);
+						grab_counter++;
+						led_on(LED1);
+						//tft_prints(0,1,"Shooting has started");
+          }else if (value_received == 230){//To Release
+						//tft_prints(0,0,"Value: %d",value_received);
+						//tft_update();
+            //gpio_set(GPIO3);
+						led_on(LED1);
+						lift_counter++;
+          }else{
+						led_off(LED1);
+					}
+					
+					if(value_received!=210){
+						gpio_reset(GPIO1);
+					}
+					
+					if((grab_counter%2)==0){
+						gpio_reset(GPIO2);
+					}
+					else if((grab_counter%2)==1){
+						gpio_set(GPIO2);
+					}
+					
+					if((lift_counter%2)==0){
+						gpio_reset(GPIO3);
+					}
+					else if((lift_counter%2)==1){
+						gpio_set(GPIO3);
+					}
         }
       }
-      
+      /*
       if (robot_mode == AUTO){
 				//------------------------------------------------From here on, it is for the AUTO MODE - LINE SENSOR PATHING
 				left_sensor_reading=gpio_read(GPIO5);
@@ -293,10 +346,11 @@ int main() {
         if (value_received == 255){
           robot_mode = MANUAL;
         }
-      }
+      }*/
       
+			
       //print info to tft if button 1 is pressed
-      if (!(lastticks%250)){
+      /*if (!(lastticks%250)){
         if (button_pressed(BUTTON1)){
           //get the distance from the object to the ultrasonic sensor in mm
           //output the distance on tft in mm
@@ -305,7 +359,7 @@ int main() {
           tft_prints(0,6, "Bluetooth: %d", value_received);
           tft_update();
         }
-      }
+      }*/
     }
   }        
 }
