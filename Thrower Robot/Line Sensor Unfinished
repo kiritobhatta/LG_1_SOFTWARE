@@ -40,13 +40,13 @@ int main() {
 	bool shoot=false;
 	
 	gpio_init(GPIO2,GPIO_Mode_Out_PP);//Grab
-	int grab_counter=0;
-	int grab_checker=0;
+	u8 grab_counter=0;
+	u8 grab_checker=0;
 	static u32 grab_recieved;
 	
 	gpio_init(GPIO3,GPIO_Mode_Out_PP);//Lift
-	int lift_counter=0;
-	int lift_checker=0;
+	u8 lift_counter=0;
+	u8 lift_checker=0;
 	static u32 lift_received;
 	
 	//-------------------Initialization for bluetooth module
@@ -63,9 +63,9 @@ int main() {
   motor_init(MOTOR3, 6, 1200, 1200, 1);//Initialized to Stop---- Wheel Rotation Direction (1-Forward, 0-Backward)
 	
 	//Maxium Speed = 0
-	const int forwardSpeed=500;
-	const int turningSpeed=800;
-	const int adjustingSpeed=800;
+	const u16 forwardSpeed=500;
+	const u16 turningSpeed=800;
+	const u16 adjustingSpeed=800;
 	//-----Initialization for ultrasonic Sensor
 	SetSysClockTo72();
 	sonar_init();
