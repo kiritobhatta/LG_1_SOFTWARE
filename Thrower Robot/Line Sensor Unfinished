@@ -1,1 +1,290 @@
+#include "main.h"
+#include "rcc.h"
+#include "ticks.h"
+#include "gpio.h"
+#include "uart.h"
+#include "lcd_main.h"
+#include "oled.h"
+#include "pwm.h"
+#include "leds.h"
+#include "buttons.h"
+#include "buzzer.h"
+#include "sonar.h"
+#include "MotorControl.h"
+#include <stdbool.h>
 
+typedef enum{AUTO, MANUAL}OperationMode;
+
+u8 value_received; //value from Bluetooth connection
+void UARTOnReceiveHandler(const u8 received){
+  value_received = received;
+}
+
+int main() {
+    // Initialize Everything Here
+  rcc_init();
+  ticks_init();
+  leds_init();
+	
+  tft_init(PIN_ON_BOTTOM, BLACK, WHITE, RED, YELLOW);
+	tft_clear();
+	//tft_prints(0,0,"Value: 0");
+	tft_update();
+	
+  leds_init();
+  buttons_init();
+	
+	//-------------------Initialization for solenoid Valve
+	gpio_init(GPIO1,GPIO_Mode_Out_PP);//Shoot
+	static u32 shoot_recieved;
+	bool shoot=false;
+	
+	gpio_init(GPIO2,GPIO_Mode_Out_PP);//Grab
+	int grab_counter=0;
+	int grab_checker=0;
+	static u32 grab_recieved;
+	
+	gpio_init(GPIO3,GPIO_Mode_Out_PP);//Lift
+	int lift_counter=0;
+	int lift_checker=0;
+	static u32 lift_received;
+	
+	//-------------------Initialization for bluetooth module
+  uart_init(COM3,9600);
+	//-------------------Initialization for Line Sensors
+	gpio_init(GPIO7,GPIO_Mode_IPU);//left line sensor
+	gpio_init(GPIO5,GPIO_Mode_IPU);//right line sensor
+	gpio_init(GPIO6,GPIO_Mode_IPU);//counter sensor
+	
+	int left_sensor_reading;
+	int right_sensor_reading;
+	//-------------------Initialization for Motors
+  motor_init(MOTOR1, 6, 1200, 1200, 1);//Initialized to Stop ---- Wheel Rotation Direction (1-Forward, 0- Backward)
+  motor_init(MOTOR3, 6, 1200, 1200, 1);//Initialized to Stop---- Wheel Rotation Direction (1-Forward, 0-Backward)
+	
+	//Maxium Speed = 0
+	const int forwardSpeed=500;
+	const int turningSpeed=800;
+	const int adjustingSpeed=800;
+	//-----Initialization for ultrasonic Sensor
+	SetSysClockTo72();
+	sonar_init();
+  uart_rx_init(COM3,&UARTOnReceiveHandler);  
+  uint32_t lastticks=get_ticks();
+  static u32 sonar_distance = 0;
+	
+	int UltrasonicStop=0;
+	//-----------------------Line Sensor Counter initialization
+	bool current_checker;
+	bool previous_checker;
+	int counter=0;
+	//-----------------------Operation Mode Initialization
+  OperationMode robot_mode;
+	int mode=0;
+	robot_mode=MANUAL;
+  //-----------------------Auto Mode initialization for linesensors
+	int auto_mode_grabbing=0;
+	static u32 auto_grab_time;
+	int auto_grabbing_done=0;
+	static u32 mid_sensor_sense=0;
+	
+	static u32 stop_time=0,last_ticks,this_ticks;
+  while(1){
+    if(lastticks!=get_ticks()){
+      lastticks=get_ticks();
+			
+			this_ticks=get_ticks();
+			
+			//----------------------------------Button 1 can be used to interchange between Manual and Auto Mode
+			/*
+			if (this_ticks - last_ticks >= 50) {
+				static u8 debounce;
+				if (!button_pressed(BUTTON1) && debounce) {debounce = 0;}
+			// set debounce if button is initially pressed
+				if (button_pressed(BUTTON1) && !debounce) {debounce = 1;mode++;}
+				else if (button_pressed(BUTTON1) && debounce) {}
+			}
+			if(mode%2==0){robot_mode=AUTO;led_on(LED1);led_off(LED2);}
+			else if(mode%2==1){robot_mode=MANUAL;led_on(LED2);led_off(LED1);}
+			//--------------------------------The codes above are to use button 1 to change the mode
+			*/
+      if (!(lastticks%50)){
+				static u8 debounce2=0,debounce3=0;
+        //code here will run every 100s
+        if (robot_mode == MANUAL){
+					//tft_clear();
+					
+					
+					
+          if (value_received == 0){
+            Stop();
+						/*
+						tft_prints(0,0,"Value: %d",value_received);
+						tft_prints(0,1,"Stopped");
+						tft_update();*/
+          }else if (value_received <= 50){
+            Forward(value_received*24);
+						/*
+						tft_prints(0,0,"Value: %d",value_received);
+						tft_prints(0,1,"Moving Forward");
+						tft_update();*/
+          }else if (value_received <= 100){
+            TurnLeft((value_received - 50)*24);
+						/*
+						tft_prints(0,0,"Value: %d",value_received);
+						tft_prints(0,1,"Turning Left");
+						tft_update();*/
+          }else if (value_received <= 150){
+            Backward((value_received - 100)*24);
+						/*
+						tft_prints(0,0,"Value: %d",value_received);
+						tft_prints(0,1,"Turning Right");
+						tft_update();*/
+          }else if (value_received <= 200){
+            TurnRight((value_received - 150)*24);
+          }else if (value_received == 210){//Shoot
+            gpio_set(GPIO1);//Set gpio as high
+          }
+					
+					//-----------------Debouncing for grab and lift actions
+					if (value_received == 220 && !debounce2){//When initially pressed for grab
+						grab_counter++;
+						debounce2=1;
+					}
+					else if(value_received!=220 && debounce2){
+						debounce2=0;
+					}
+					
+          if (value_received == 230 && !debounce3){//When initially pressed for lift
+							lift_counter++;
+							debounce3=1;
+					}
+					else if(value_received!=230 && debounce3){
+							debounce3=0;
+					}
+					
+					if((grab_counter%2)==1){
+						gpio_set(GPIO2);
+					}
+					else if((grab_counter%2)==0){
+						gpio_reset(GPIO2);
+					}
+					
+					//WILL GRAB IF SIGNAL SENT AS HIGH
+					if((lift_counter%2)==1){
+						gpio_set(GPIO3);
+					}
+					else if((lift_counter%2)==0){//wILL RELEASE IF SIGNAL SENT AS LOW
+						gpio_reset(GPIO3);
+					}
+				
+
+
+					
+					
+					//----------------------------------Solenoid Valve communication
+					if(value_received!=210){//While button isn't pressed, shooting command doesn't work
+						gpio_reset(GPIO1);
+					}
+        }
+      }
+			
+			
+			
+ //---------------------------------AUTO CODE MODE STARTS FROM HERE
+			
+			
+			/*
+      if (robot_mode == AUTO){
+				//------------------------------------------------From here on, it is for the AUTO MODE - LINE SENSOR PATHING
+				left_sensor_reading=gpio_read(GPIO7);
+				right_sensor_reading=gpio_read(GPIO5);
+				static u8 mid_sensor_debounce;
+				
+				if(gpio_read(GPIO6)){current_checker=true;}//Middle Sensors
+				else{current_checker=false;}	
+				//-------------------------------------------------------------------------------				
+				if(current_checker!=previous_checker){
+					counter++;
+					tft_clear();
+					tft_prints(0,2,"Counter: %d",counter);
+				}
+				//Everytime there is a change in the input value compared to the value in the previous tick, counter increases
+				//-------------------------------------------------------------------------------
+				if(gpio_read(GPIO6)){previous_checker=true;}
+				else{previous_checker=false;}
+				
+				if(gpio_read(GPIO6) && !mid_sensor_debounce){//When it first senses the line
+					mid_sensor_sense=get_ticks();
+					mid_sensor_debounce=1;
+				}
+				else if(!gpio_read(GPIO6) && mid_sensor_debounce){//After cannot detect anymore, reset the debounce
+					mid_sensor_debounce=0;
+				}
+				
+				if(UltrasonicStop==0){//First Stage where the counter is less than 5
+					//----------------------------------Normal Movement
+					
+					if((get_ticks()-mid_sensor_sense)>=1500){//The left sensors and rightsensors effect will be delayed
+						if(left_sensor_reading && right_sensor_reading){
+							Forward(forwardSpeed);
+						}
+						else if(!left_sensor_reading && right_sensor_reading){
+							LForward(forwardSpeed);
+							RForward(forwardSpeed+adjustingSpeed);
+						}
+						else if(left_sensor_reading && !right_sensor_reading){
+							LForward(forwardSpeed+adjustingSpeed);
+							RForward(forwardSpeed);
+						}
+					}
+					else if((get_ticks()-mid_sensor_sense)<1500){//In between will move forward
+						Forward(adjustingSpeed);
+					}
+				}
+				else if(UltrasonicStop==1){
+					Stop();
+				}
+				
+				//tft_update();
+				//------------------------------------------------From here on is for the AUTO MODE - ULTRASONIC SENSOR
+        sonar_start();
+				
+				
+        //tft_clear();
+        sonar_distance = sonar_get();
+        tft_prints(0, 0, "%d", sonar_distance);
+        tft_update();
+                  
+        if ((sonar_distance >= 100) && (sonar_distance <= 250) && auto_grabbing_done==0){//While grabbing and lifting hasn't been done
+					Stop();
+					if(auto_mode_grabbing==0){
+						gpio_set(GPIO2);//Grabbing has been done
+						auto_mode_grabbing=1;
+						auto_grab_time=get_ticks();
+					}
+					if((get_ticks()-auto_grab_time)>=2000){//2 seconds after the grabbing has been done
+						gpio_set(GPIO3);//Lifting will be done
+						auto_grabbing_done=1;
+						UltrasonicStop=1;
+					}
+        }
+				else if (sonar_distance > 1000){
+          //Forward(300);
+        }else if (sonar_distance > 250){
+          //Forward(300);
+        }
+				//else if (sonar_distance < 100){
+          //Backward(300);
+       // }
+				else{
+          Stop();
+        }
+        
+        if (value_received == 255){
+          robot_mode = MANUAL;
+        }
+      }*/
+    }
+  }        
+}
