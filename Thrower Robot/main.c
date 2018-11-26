@@ -80,10 +80,11 @@ int main() {
 	u8 counter=0;
 	//-----------------------Operation Mode Initialization
   OperationMode robot_mode;
-	robot_mode=STOP;
+	robot_mode=STOP; 
   //-----------------------Auto Mode initialization for linesensors
 	int auto_mode_grabbing=0;
 	static u32 auto_grab_time;
+	
 	int auto_grabbing_done=0;
 	static u32 mid_sensor_sense=0;
 	
@@ -96,6 +97,12 @@ int main() {
 	static u32 stop_back_time=0;
 	int stop_back=0;
 	
+	int stop_turn=0;
+	
+	//-------------------------------For shaking of the motor
+	static u32 shaking_time=0;
+	int shaking_counter=0;
+	
 	static u32 stop_time=0,last_ticks,this_ticks;
   while(1){
     if(lastticks!=get_ticks()){
@@ -106,15 +113,21 @@ int main() {
 			
 			
 			//----------------------------------Button 1 can be used to interchange between Manual and Auto Mode
+		
 			if (this_ticks - last_ticks >= 50) {
 				static u8 debounce;
 				if (!button_pressed(BUTTON1) && debounce) {debounce = 0;}
 			// set debounce if button is initially pressed
-				if (button_pressed(BUTTON1) && !debounce) {debounce = 1;mode++;}
+				if (button_pressed(BUTTON1) && !debounce) {debounce = 1;robot_mode = AUTO;}
 				else if (button_pressed(BUTTON1) && debounce) {}
 			}
-			if(mode%2==0){robot_mode=AUTO;led_on(LED1);led_off(LED2);}
-			else if(mode%2==1){robot_mode=MANUAL;led_on(LED2);led_off(LED1);}
+			/*
+			if(mode%2==0){robot_mode=AUTO;
+			//led_on(LED1);led_off(LED2);
+			}
+			else if(mode%2==1){robot_mode=MANUAL;
+			//led_on(LED2);led_off(LED1);
+			}*/
 			//--------------------------------The codes above are to use button 1 to change the mode
 			
 			
@@ -122,6 +135,7 @@ int main() {
     if (!(lastticks%50)){//Code from here runs every 50ms
 				
 				 //---------------------------------AUTO CODE MODE STARTS FROM HERE
+			/*
 			static u8 b1 = 0;
 			if (button_pressed(BUTTON1) && (b1 == 0)){
 			  b1 = 1;
@@ -129,14 +143,16 @@ int main() {
 			  b1 = 0;
 				robot_mode = AUTO;
 			}
-			
-			sonar_start();
-			sonar_distance = sonar_get();
+			*/
+			//sonar_start();
+			//sonar_distance = sonar_get();
 	//		tft_clear();
 		//	tft_prints(0,0,"sonar: ", sonar_distance);
 		//	tft_update();
 			
       if (robot_mode == AUTO){
+				led_on(LED1);
+				led_off(LED2);
 				//------------------------------------------------From here on, it is for the AUTO MODE - LINE SENSOR PATHING
 				left_sensor_reading=gpio_read(GPIO7);//Reading 1 is black, Reading 0 is non-black
 				right_sensor_reading=gpio_read(GPIO5);//right line sensor
@@ -175,7 +191,9 @@ int main() {
 							//tft_clear();
 							//tft_prints(0,1,"moving Forward");
 							//tft_update();
-							Forward(forwardSpeed);
+							//Forward(forwardSpeed);
+							LForward(forwardSpeed+80);
+							RForward(forwardSpeed);
 						}
 						else if(!left_sensor_reading && right_sensor_reading){//LEFT sensor touches line
 							LForward(forwardSpeed + adjustingSpeed);
@@ -194,11 +212,11 @@ int main() {
 					}
 					else if((get_ticks()-mid_sensor_sense)<80){//In between will move forward
 						//Forward(forwardSpeed);
-						LForward(forwardSpeed+adjustingSpeed+120);
+						LForward(forwardSpeed+adjustingSpeed+200);
 						RForward(forwardSpeed-adjustingSpeed);
-						tft_clear();
+						//tft_clear();
 						//tft_prints(0,1,"Fwd,L/R delay");
-						tft_update();
+						//tft_update();
 					}
 				}
 				else if(UltrasonicStop==1){
@@ -211,12 +229,31 @@ int main() {
         sonar_start();
 				
 				
-        tft_clear();
+        //tft_clear();
 				sonar_distance = sonar_get();
 				
-        tft_prints(0, 0, "%d", sonar_distance);
-        tft_update();
-                  
+        //tft_prints(0, 0, "%d", sonar_distance);
+        //tft_update();
+         
+			//---------------------------------The code here is to shake the thrower robot till the ultrasonic senses
+			/*
+				if(this_ticks>=14000 && sonar_distance==20){//crossed 5th line and the ultrasonic sensor is not sernsing
+					led_on(LED1);
+					led_on(LED2);
+					
+					if((get_ticks()-shaking_time)>=50){//Alternating every 50ms
+						if(shaking_counter%2==0){
+							motor_control(MOTOR1,800,1);
+							motor_control(MOTOR3,800,0);
+							shaking_counter++;
+						}
+						else if(shaking_counter%2==1){
+							motor_control(MOTOR1,800,0);
+							motor_control(MOTOR3,800,1);
+						}
+					}
+				}*/
+				//------------------------------------------------------------
         if ((sonar_distance < 80) && (sonar_distance>20) && auto_grabbing_done==0 && EverythingDone==0){//While grabbing and lifting hasn't been done
 					if(ultrasonic_stop==0){
 						ultrasonic_stopping_time=get_ticks();
@@ -230,7 +267,7 @@ int main() {
 							stop_grab=1;
 						}
 						
-						if((get_ticks()-stop_grab_time)>=1000){//take 1 sec before grabbing is done
+						if((get_ticks()-stop_grab_time)>=600){//take 1 sec before grabbing is done
 							if(auto_mode_grabbing==0){
 								gpio_set(GPIO2);//Grabbing has been done
 								auto_mode_grabbing=1;
@@ -259,13 +296,17 @@ int main() {
 						stop_back=1;
 					}
 					
-					if((get_ticks()-stop_back_time)>=2000 && (get_ticks()-stop_back_time)<8000){
+					if((get_ticks()-stop_back_time)>=2000 && (get_ticks()-stop_back_time)<6000){
 						//adjust = 45;
-						Backward(800);
+						LBackward(900);
+						RBackward(600);
 					}
-					else if((get_ticks()-stop_back_time)>=8000){
+					else if((get_ticks()-stop_back_time)>=6000 && stop_turn!=1){
 						Stop();
+						
 					}
+					
+						
 				}
         
         if (value_received == 255){
@@ -283,18 +324,22 @@ int main() {
 			
 				static u8 debounce2=0,debounce3=0;
         if (robot_mode == MANUAL){
-				
+					led_off(LED1);
+					led_on(LED2);
 					
+					//tft_clear();
+					//tft_prints(0,4,"Value: %d",value_received);	
+					//tft_update();
           if (value_received == 0){
-            Stop();
+            MStop();
           }else if (value_received <= 50){//Forward Moving
-            Forward(value_received*24);
+            MForward(value_received*24);
           }else if (value_received <= 100){//Turning Left
-            TurnLeft((value_received - 50)*24);
+            MTurnLeft((value_received - 50)*24);
           }else if (value_received <= 150){//Backward Moving
-            Backward((value_received - 100)*24);
+            MBackward((value_received - 100)*24);
           }else if (value_received <= 200){//Turning Right
-            TurnRight((value_received - 150)*24);
+            MTurnRight((value_received - 150)*24);
           }else if (value_received == 210){//Shoot
             gpio_set(GPIO1);//Set gpio as high
           }
